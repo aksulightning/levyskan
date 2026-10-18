@@ -4,9 +4,9 @@ set -eu
 TZ=UTC0
 export TZ
 cd "$(dirname "$0")/.."
-bin="$PWD/vinylscan"
+bin="$PWD/levyskan"
 for tool in jq gzip sha256sum; do command -v "$tool" >/dev/null || { echo "Missing test tool: $tool" >&2; exit 1; }; done
-work=$(mktemp -d "${TMPDIR:-/tmp}/vinylscan-test.XXXXXX")
+work=$(mktemp -d "${TMPDIR:-/tmp}/levyskan-test.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 passed=0
 # Count and report one successful integration-test group.
