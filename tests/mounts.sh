@@ -1,8 +1,8 @@
 #!/bin/sh
 # Optional privileged tests: run only in a private disposable mount namespace.
 set -eu
-if [ "${VINYLSCAN_MOUNT_TESTS:-}" != 1 ]; then
-    echo 'Set VINYLSCAN_MOUNT_TESTS=1 inside a disposable private mount namespace.' >&2
+if [ "${LEVYSKAN_MOUNT_TESTS:-}" != 1 ]; then
+    echo 'Set LEVYSKAN_MOUNT_TESTS=1 inside a disposable private mount namespace.' >&2
     exit 2
 fi
 mount --make-rprivate /
