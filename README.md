@@ -12,6 +12,7 @@ failure reporting. This is an early prototype, not a recovery tool.
 apk add build-base linux-headers zlib-dev openssl-dev
 make
 ./vinylscan --help
+make docs
 
 # Additional test tools only:
 apk add jq gzip
@@ -32,6 +33,8 @@ symlinks/FIFOs; date selection; existing versions; corruption; interruptions;
 changed files; short I/O; disk-full, sync and metadata failures. Deterministic
 fault injection is a separate shared library, never linked into Vinylscan.
 Tests require a writable temporary filesystem (`TMPDIR` can select one).
+`make docs` checks for required source and function comments; `make test` and CI
+run the same check. Comment accuracy still requires human review.
 `.github/workflows/ci.yml` builds and tests in Alpine, with a separate mount test.
 
 ## Usage

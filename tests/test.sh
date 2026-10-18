@@ -9,7 +9,9 @@ for tool in jq gzip sha256sum; do command -v "$tool" >/dev/null || { echo "Missi
 work=$(mktemp -d "${TMPDIR:-/tmp}/vinylscan-test.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 passed=0
+# Count and report one successful integration-test group.
 pass() { passed=$((passed + 1)); printf 'PASS %s\n' "$*"; }
+# Run a command and fail the suite if its exit status differs from the expected value.
 expect() {
     expected=$1; shift
     actual=0
@@ -19,9 +21,13 @@ expect() {
         echo "Expected exit $expected, got $actual: $*" >&2; exit 1
     fi
 }
+# Back up disposable fixtures with both development-only safety overrides.
 backup() { "$bin" backup --source "$1" --dest "$2" --allow-writable-source --allow-same-filesystem; }
+# Scan disposable fixtures with both development-only safety overrides.
 scan() { "$bin" scan --source "$1" --dest "$2" --allow-writable-source --allow-same-filesystem; }
+# List completed metadata files beneath the supplied destination.
 metadata() { find "$1/.vinylscan" -name metadata.jsonl -type f; }
+# Check a jq predicate against completed JSONL records in a destination.
 json() { find "$1/.vinylscan" -name metadata.jsonl -type f -exec cat {} + | jq -es "$2" >/dev/null; }
 
 ${CC:-cc} -std=c11 -Wall -Wextra -Wpedantic -fPIC -shared tests/fault.c -o tests/fault.so

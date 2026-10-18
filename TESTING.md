@@ -36,6 +36,14 @@ Executed subsequently in GitHub Actions on 2026-10-18:
   source acceptance, separate-filesystem traversal boundary, same-device bind-mount
   skip and destination bind-alias refusal all passed. CI logs were inspected.
 
+Documentation coverage validation, executed in GitHub Actions on 2026-10-18:
+
+- [Run 39123621477](https://github.com/aksulightning/vinylscan/actions/runs/39123621477):
+  `make test` ran `tests/docs.sh` and reported `PASS documentation comments`.
+  Alpine/musl build, all 26 test groups, and mount-boundary tests passed.
+- The lightweight comment checker verifies required comment presence, not semantic
+  accuracy; that remains a manual review responsibility.
+
 Still unverified:
 
 - AddressSanitizer/LeakSanitizer did not complete: the sandbox has no `/proc`,
