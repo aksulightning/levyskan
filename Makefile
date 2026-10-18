@@ -10,7 +10,7 @@ all: levyskan
 levyskan: $(OBJECTS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(LDLIBS)
 
-$(OBJECTS): src/vinylscan.h
+$(OBJECTS): src/levyskan.h
 
 docs:
 	sh tests/docs.sh
