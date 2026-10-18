@@ -19,7 +19,7 @@ implementation code was copied; cryptography and compression use library APIs.
 ## Project policy and limits
 
 UTC dates, a 4,096-byte preview sample, two-pass inventory/content processing,
-lossless hexadecimal path fields, flat JSONL and version suffixes are Vinylscan
+lossless hexadecimal path fields, flat JSONL and version suffixes are Levyskan
 design choices. The sources document APIs; they do not establish that this
 program provides a snapshot or guarantees recovery or power-loss durability.
 Mount checks are point-in-time, and a trusted, stable destination remains necessary.
