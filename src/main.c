@@ -99,6 +99,8 @@ static int execute_scan(Run *run)
     if (result < 0 || interrupted || run->fatal) return -1;
     if (close(run->metadata_fd) < 0) { run->metadata_fd = -1; return -1; }
     run->metadata_fd = -1;
+    /* The final filename means enumeration finished, not that every file passed.
+     * Per-entry errors remain in JSONL and produce exit status 1. */
     if (rename_no_replace(run->run_fd, "metadata.partial", run->run_fd, "metadata.jsonl") < 0 ||
         fsync(run->run_fd) < 0) return -1;
     return 0;

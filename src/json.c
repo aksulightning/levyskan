@@ -93,6 +93,9 @@ void free_record(VerifyRecord *record)
     memset(record, 0, sizeof(*record));
 }
 
+/* Accept the scalar-only version-1 schema, not arbitrary JSON documents.
+ * Reject duplicate keys so two consumers cannot disagree about which path/hash
+ * applies. Field order is irrelevant; unknown scalar fields remain extensible. */
 int parse_record(const char *line, VerifyRecord *record)
 {
     const char *p = line;

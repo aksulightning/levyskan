@@ -6,6 +6,8 @@
 #include <string.h>
 #include <time.h>
 
+/* Invalid UTF-8 bytes get a valid JSON display escape. This display mapping is
+ * not reversible alongside valid UTF-8; path_hex/backup_hex preserve exact bytes. */
 void json_string(FILE *file, const char *value)
 {
     if (!value) { fputs("null", file); return; }
@@ -59,6 +61,8 @@ static void string_field(FILE *file, const char *key, const char *value)
     json_string(file, value);
 }
 
+/* Assemble one complete line before writing. A short/failing write may still
+ * leave a partial tail; the run coordinator must stop and retain metadata.partial. */
 int metadata_write(Run *run, const Entry *entry)
 {
     char *line = NULL;

@@ -6,6 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 
+/* Return 1 for identical uncompressed data, 0 for a different/damaged gzip,
+ * or -1 for an unsafe object or I/O failure. Never alter the existing file. */
 static int existing_matches(Run *run, int parent, const char *name, const Entry *entry)
 {
     int fd = openat(parent, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
@@ -34,6 +36,9 @@ done:
     return result;
 }
 
+/* file.part must already be closed and synced. Rename atomically claims a free
+ * name; a following directory-sync failure is still a failed backup, even though
+ * the complete gzip may now exist. Leave that output intact for inspection. */
 static int publish(Run *run, Entry *entry, const char *base)
 {
     char *leaf = NULL;
@@ -74,6 +79,8 @@ static int process_file(Run *run, Entry *entry)
     char *leaf = NULL;
     int parent = open_parent(run->source_fd, entry->relative, false, run->source_mount, &leaf);
     if (parent < 0) return -1;
+    /* A scanned regular file could have been replaced by a FIFO. O_NONBLOCK
+     * avoids hanging before fstat can reject the replacement's type. */
     int fd = openat(parent, leaf, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
     int output = -1, result = -1;
     struct stat before, after, named;
@@ -86,6 +93,8 @@ static int process_file(Run *run, Entry *entry)
         if (output < 0) goto done;
     }
     if (stream_file(fd, output, entry, &bytes) < 0) goto done;
+    /* Check both the held inode and its directory entry: replacing the name
+     * alone would otherwise leave the old descriptor looking unchanged. */
     if (fstat(fd, &after) < 0 || fstatat(parent, leaf, &named, AT_SYMLINK_NOFOLLOW) < 0 ||
         check_source(run, fd) < 0) goto done;
     if (!same_stat(&before, &after) || !same_stat(&before, &named) || bytes != (uint64_t)before.st_size) {
@@ -132,6 +141,8 @@ int process_inventory(Run *run, Inventory *inventory)
             run->errors++;
             log_error(run, entry->path, entry->error);
         } else if (!strncmp(entry->status, "skipped_", 8)) run->skipped++;
+        /* An unrecordable result ends the run. Continuing would create backups
+         * that the eventual metadata could misleadingly appear to cover. */
         if (metadata_write(run, entry) < 0 || fsync(run->metadata_fd) < 0) {
             log_error(run, "metadata.partial", strerror(errno));
             run->fatal = true;

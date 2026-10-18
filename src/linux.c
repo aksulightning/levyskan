@@ -6,6 +6,8 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+/* st_dev alone cannot distinguish same-device bind mounts. Refuse operation if
+ * the kernel cannot supply a mount ID; never silently weaken the boundary check. */
 int mount_id(int fd, uint64_t *id)
 {
     struct statx value;

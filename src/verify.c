@@ -7,6 +7,8 @@
 #include <string.h>
 #include <unistd.h>
 
+/* Treat stored paths as untrusted even if this program originally wrote them.
+ * Only backup_hex is authoritative; source paths are never opened here. */
 static int verify_file(Run *run, const VerifyRecord *record)
 {
     char *path = hex_decode(record->backup_hex);
@@ -36,6 +38,8 @@ done:
     return result;
 }
 
+/* Return 1 for a newline-terminated record, 0 for clean EOF, or -1 for a broken
+ * record/read. Bound allocation instead of trusting an arbitrarily long line. */
 static int read_record(FILE *file, char **buffer, size_t *capacity)
 {
     size_t length = 0;
@@ -62,6 +66,8 @@ static void verify_metadata(Run *run, int directory, const char *run_name)
         partial = true;
         fd = openat(directory, "metadata.partial", O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC);
     }
+    /* Valid earlier records can still be checked, but they cannot turn an
+     * interrupted run into a completely successful verification. */
     if (partial) { run->errors++; log_error(run, run_name, "incomplete run; checking available complete records"); }
     struct stat stat;
     uint64_t mount;

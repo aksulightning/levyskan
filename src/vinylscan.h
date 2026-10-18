@@ -1,3 +1,4 @@
+/* Shared contracts and owned run state; API rationale is indexed in RESEARCH.md. */
 #ifndef VINYLSCAN_H
 #define VINYLSCAN_H
 
@@ -32,6 +33,7 @@ typedef struct {
     Preview preview;
 } Entry;
 
+/* Owns entries and their path/error strings; status and preview.type are literals. */
 typedef struct {
     Entry *entries;
     size_t count, capacity;
@@ -52,6 +54,7 @@ typedef struct {
 } VerifyRecord;
 
 extern volatile sig_atomic_t interrupted;
+/* Allocation failure exits with an incomplete run; returned strings are caller-owned. */
 void *allocate(size_t size);
 void set_emergency_log(int fd);
 char *copy_string(const char *s);
@@ -63,6 +66,8 @@ int rename_no_replace(int from, const char *old_name, int to, const char *new_na
 int check_source(Run *run, int fd);
 int open_root(const char *path);
 int open_directory(int parent, const char *name, bool create, uint64_t mount);
+/* Returns an owned parent fd and allocated leaf on success, -1/errno on failure.
+ * The root is borrowed. Only destination callers may request create=true. */
 int open_parent(int root, const char *path, bool create, uint64_t mount, char **leaf);
 bool same_stat(const struct stat *a, const struct stat *b);
 int create_run(Run *run, const char *prefix);
@@ -74,12 +79,18 @@ void free_inventory(Inventory *inventory);
 void preview_add(Preview *preview, const unsigned char *data, size_t length);
 void preview_finish(Preview *preview);
 size_t utf8_character(const unsigned char *s, size_t length);
+/* Fds are borrowed. output=-1 selects scan-only. Hash/preview require success;
+ * the caller must still validate source identity/timestamps before trusting them. */
 int stream_file(int source, int output, Entry *entry, uint64_t *bytes);
+/* Borrow fd at its current offset; accept exactly one gzip member within maximum.
+ * On 0, hash and size are valid; on -1, errno describes the failure. */
 int hash_gzip(int fd, char hash[65], uint64_t *size, uint64_t maximum);
 int metadata_write(Run *run, const Entry *entry);
 void json_string(FILE *file, const char *value);
 char *hex_encode(const char *value);
 char *hex_decode(const char *value);
+/* On success, record owns strings released by free_record(); failure frees them.
+ * Path decoding and filesystem confinement remain the verifier's responsibility. */
 int parse_record(const char *line, VerifyRecord *record);
 void free_record(VerifyRecord *record);
 int process_inventory(Run *run, Inventory *inventory);

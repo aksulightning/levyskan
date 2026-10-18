@@ -47,6 +47,7 @@ static int walk(Run *run, Inventory *inventory, int fd, const char *relative, un
         free(path);
         if (!entry) { result = -1; break; }
         size_t index = inventory->count - 1;
+        /* Inspect type and mount without opening a device or waiting on a FIFO. */
         int object = openat(fd, item->d_name, O_PATH | O_NOFOLLOW | O_CLOEXEC);
         uint64_t mount;
         if (object < 0) { entry_error(entry, strerror(errno)); continue; }
@@ -100,6 +101,8 @@ int scan_tree(Run *run, Inventory *inventory)
     return result;
 }
 
+/* Eligibility is fixed at inventory time: a later read failure does not move
+ * other files to a different date. No eligible files means an empty date. */
 int select_backup_date(const Inventory *inventory, char date[32])
 {
     bool found = false;

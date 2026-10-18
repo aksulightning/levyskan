@@ -14,6 +14,8 @@ static int digest_finish(EVP_MD_CTX *context, char hash[65])
     return 0;
 }
 
+/* Feed preview, EVP and deflate from the same read buffer. Bound reads by the
+ * inventoried size so a growing live file cannot keep this loop running forever. */
 int stream_file(int source, int output, Entry *entry, uint64_t *bytes)
 {
     unsigned char input[IO_SIZE], compressed[IO_SIZE], sample[PREVIEW_SAMPLE];
@@ -63,6 +65,8 @@ done:
     return result;
 }
 
+/* Use inflate rather than gzread's transparent/plaintext mode. The output limit
+ * also stops expansion beyond the expected file size when checking a bad gzip. */
 int hash_gzip(int fd, char hash[65], uint64_t *size, uint64_t maximum)
 {
     unsigned char input[IO_SIZE], output[IO_SIZE];

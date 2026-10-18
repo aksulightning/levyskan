@@ -27,13 +27,17 @@ short reads and short writes. Unreadable-file behavior is injected so the test
 remains meaningful when run as root. Failed files are not published successfully;
 other files continue when safe; partial runs remain identifiable.
 
-Not verified in this environment:
+Executed subsequently in GitHub Actions on 2026-10-18:
 
-- Alpine/musl compilation or the GitHub Actions workflow. The supplied CI builds
-  on Alpine 3.22. Nothing was pushed or run on GitHub.
-- Actual read-only/bind-mount integration: `tests/mounts.sh` is supplied for an
-  isolated privileged mount namespace and configured in CI. Local ordinary tests
-  exercise strict writable-source refusal, not actual read-only mount acceptance.
+- [Run 39120604851](https://github.com/aksulightning/vinylscan/actions/runs/39120604851),
+  commit `12aa1a5324ce9d7f65d9085bfd124d6ac9f63bfb`: passed.
+- Alpine 3.22/musl build with `-Werror` and all 26 test groups: passed.
+- `tests/mounts.sh` in an isolated privileged mount namespace: actual read-only
+  source acceptance, separate-filesystem traversal boundary, same-device bind-mount
+  skip and destination bind-alias refusal all passed. CI logs were inspected.
+
+Still unverified:
+
 - AddressSanitizer/LeakSanitizer did not complete: the sandbox has no `/proc`,
   and LeakSanitizer reported that it could not inspect process tasks. No clean
   ASan/LSan result is claimed.

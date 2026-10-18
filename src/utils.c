@@ -79,6 +79,8 @@ int write_all(int fd, const void *buffer, size_t size)
     return 0;
 }
 
+/* Check the opened object's mount, not a pathname that may have been replaced.
+ * A successful check is point-in-time; it cannot stop a subsequent remount. */
 int check_source(Run *run, int fd)
 {
     uint64_t mount;
@@ -93,6 +95,8 @@ int check_source(Run *run, int fd)
     return 0;
 }
 
+/* Validate one component and refuse symlinks. A zero mount allows crossings only
+ * while opening a canonical root; traversal below a root supplies its mount ID. */
 int open_directory(int parent, const char *name, bool create, uint64_t mount)
 {
     if (!*name || !strcmp(name, ".") || !strcmp(name, "..") || strchr(name, '/')) {
@@ -110,6 +114,8 @@ int open_directory(int parent, const char *name, bool create, uint64_t mount)
     return fd;
 }
 
+/* Resolve components relative to held descriptors, never by concatenating an
+ * untrusted path into an absolute output path. The caller opens leaf no-follow. */
 int open_parent(int root, const char *path, bool create, uint64_t mount, char **leaf)
 {
     if (!*path || *path == '/') { errno = EINVAL; return -1; }
@@ -148,6 +154,8 @@ int open_root(const char *path)
     return fd;
 }
 
+/* Ignore atime: an explicitly permitted writable-source read may change it.
+ * These comparisons detect observable changes, not a filesystem snapshot. */
 bool same_stat(const struct stat *a, const struct stat *b)
 {
     return a->st_dev == b->st_dev && a->st_ino == b->st_ino &&
