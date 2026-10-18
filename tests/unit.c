@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Exercise byte-budget boundaries, invalid Unicode and a split sample-ending
+ * code point; these cases cannot be established just by testing ASCII files. */
 static void preview_tests(void)
 {
     unsigned char buffer[PREVIEW_SAMPLE];
@@ -34,6 +36,8 @@ static void preview_tests(void)
     assert(!strcmp(preview.type, "hex"));
 }
 
+/* Reject every truncation of a valid record and malformed encodings/numbers,
+ * then exercise deterministic mutations and lossless non-UTF-8 path transport. */
 static void parser_tests(void)
 {
     const char *valid = "{\"schema\":1,\"size\":0,\"command\":\"backup\",\"status\":\"error\",\"sha256\":null,\"backup_hex\":null}";
@@ -64,6 +68,7 @@ static void parser_tests(void)
     assert(!hex_decode("00") && !hex_decode("0") && !hex_decode("gg"));
 }
 
+/* Assertions stop at the first violated contract; print success only after both suites. */
 int main(void)
 {
     preview_tests(); parser_tests();

@@ -56,6 +56,8 @@ static int publish(Run *run, Entry *entry, const char *base)
             if (fsync(parent) == 0 && fsync(run->run_fd) == 0) result = 0;
             break;
         }
+        /* EEXIST is the expected collision path. Other rename failures must not
+         * be hidden by trying ever more names on a failing destination. */
         if (errno != EEXIST) { free(name); free(relative); break; }
         int matches = existing_matches(run, parent, name, entry);
         free(name);
@@ -74,6 +76,9 @@ static int publish(Run *run, Entry *entry, const char *base)
     return result;
 }
 
+/* Reopen one inventoried regular file safely, stream it, validate stability,
+ * then publish its gzip. On failure, discard only our temporary output and clear
+ * trusted read results; the caller records the error and decides whether to continue. */
 static int process_file(Run *run, Entry *entry)
 {
     char *leaf = NULL;
@@ -87,6 +92,7 @@ static int process_file(Run *run, Entry *entry)
     uint64_t bytes = 0;
     if (fd < 0) goto done;
     if (check_source(run, fd) < 0 || fstat(fd, &before) < 0) goto done;
+    /* Reject replacements and changes since inventory before reading any content. */
     if (!S_ISREG(before.st_mode) || !same_stat(&entry->stat, &before)) { errno = ESTALE; goto done; }
     if (run->backup) {
         output = openat(run->run_fd, "file.part", O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
@@ -102,6 +108,8 @@ static int process_file(Run *run, Entry *entry)
     }
     if (close(fd) < 0) { fd = -1; goto done; }
     fd = -1;
+    /* Durability checks happen before publication, while failures can still discard
+     * file.part without exposing an incomplete gzip under its final pathname. */
     if (output >= 0) {
         if (fsync(output) < 0) goto done;
         if (close(output) < 0) { output = -1; goto done; }
@@ -127,6 +135,9 @@ done:
     return result;
 }
 
+/* Process pending regular files and emit every directory/skip/error record too.
+ * Per-file errors increment the summary and allow progress; metadata/log failure
+ * or interruption ends the run, returning -1 instead of publishing complete metadata. */
 int process_inventory(Run *run, Inventory *inventory)
 {
     for (size_t i = 0; i < inventory->count; i++) {

@@ -8,6 +8,8 @@
 #include <sys/file.h>
 #include <unistd.h>
 
+/* Share one usage description between explicit help (stdout) and bad arguments
+ * (stderr), including the safety defaults and observable exit-code contract. */
 static void usage(FILE *file)
 {
     fputs("Vinylscan 0.1\n"
@@ -22,6 +24,8 @@ static void usage(FILE *file)
           "      130 SIGINT, 143 SIGTERM.\n", file);
 }
 
+/* Only store sig_atomic_t state here. Allocation, logging and cleanup are not
+ * async-signal-safe and must wait for the normal processing loop to regain control. */
 static void signal_handler(int signal_number)
 {
     interrupted = signal_number;
@@ -48,6 +52,9 @@ static int contains_directory(int ancestor, int child)
     return result;
 }
 
+/* Establish trusted roots, reject overlap and enforce mount policy before any
+ * destination creation. source=NULL selects verification, which never opens a source.
+ * Opened roots stay in Run for cleanup if a later check fails. */
 static int prepare(Run *run, const char *source, const char *destination)
 {
     run->dest = realpath(destination, NULL);
@@ -60,6 +67,8 @@ static int prepare(Run *run, const char *source, const char *destination)
             fputs("Source must be mounted read-only (or explicitly use --allow-writable-source).\n", stderr);
             return -1;
         }
+        /* Refuse both overlap directions: output inside input can recurse into
+         * itself, and input inside output blurs the source/destination boundary. */
         int inside = contains_directory(run->source_fd, run->dest_fd);
         int outside = contains_directory(run->dest_fd, run->source_fd);
         if (inside < 0 || outside < 0) return -1;
@@ -82,6 +91,9 @@ static int prepare(Run *run, const char *source, const char *destination)
     return flock(run->dest_fd, LOCK_EX | LOCK_NB);
 }
 
+/* Coordinate inventory, one date selection and per-file processing. Keep the
+ * partial metadata name until all entries have been handled; failures leave it
+ * behind as an explicit incomplete-run marker for later verification. */
 static int execute_scan(Run *run)
 {
     run->metadata_fd = openat(run->run_fd, "metadata.partial", O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
@@ -106,6 +118,8 @@ static int execute_scan(Run *run)
     return 0;
 }
 
+/* Parse one command, establish the safety boundary, dispatch it and own cleanup.
+ * Start with failure status so no early setup/error path can accidentally succeed. */
 int main(int argc, char **argv)
 {
     Run run = {.source_fd = -1, .dest_fd = -1, .run_fd = -1, .metadata_fd = -1, .log_fd = -1};
@@ -121,6 +135,7 @@ int main(int argc, char **argv)
         {"help", no_argument, NULL, 'h'}, {NULL, 0, NULL, 0}
     };
     const char *source = NULL, *destination = NULL;
+    /* argv[1] is the command, so option parsing starts after it. */
     optind = 2;
     int option;
     while ((option = getopt_long(argc, argv, "", options, NULL)) != -1) {
@@ -137,10 +152,13 @@ int main(int argc, char **argv)
         (verify && (source || run.writable || run.same_filesystem)) || (run.same_filesystem && !run.writable)) {
         usage(stderr); return 2;
     }
+    /* New backups and metadata should not become readable by other users by default. */
     umask(077);
     struct sigaction action = {.sa_handler = signal_handler};
     sigemptyset(&action.sa_mask);
     if (sigaction(SIGINT, &action, NULL) < 0 || sigaction(SIGTERM, &action, NULL) < 0) return 2;
+    /* Convert broken output pipes and file-size limits into checked I/O failures
+     * instead of terminating before an incomplete result can be recorded. */
     action.sa_handler = SIG_IGN;
     if (sigaction(SIGPIPE, &action, NULL) < 0 || sigaction(SIGXFSZ, &action, NULL) < 0) return 2;
     int exit_code = 2;
@@ -157,6 +175,8 @@ int main(int argc, char **argv)
     printf("%s: %zu\nSkipped: %zu\nErrors: %zu\n", verify ? "Verified records" : "Files processed", run.processed, run.skipped, run.errors);
     printf("Run: .vinylscan/%s/\n", run.run_name);
 done:
+    /* A late flush/close error can invalidate apparent success. SIGINT/SIGTERM
+     * take precedence afterward so shells can identify an interrupted command. */
     if (run.metadata_fd >= 0 && close(run.metadata_fd) < 0) exit_code = 2;
     if (run.log_fd >= 0) {
         if (fsync(run.log_fd) < 0) { perror("vinylscan: log fsync"); exit_code = 2; }

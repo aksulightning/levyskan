@@ -4,11 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* JSON permits only these four whitespace bytes, regardless of process locale. */
 static void whitespace(const char **p)
 {
     while (**p == ' ' || **p == '\t' || **p == '\r' || **p == '\n') (*p)++;
 }
 
+/* Consume exactly four hexadecimal digits after a JSON Unicode escape marker.
+ * The string parser, not this helper, combines surrogate pairs into scalar values. */
 static int unicode_escape(const char **p, unsigned *value)
 {
     *value = 0;
@@ -25,9 +28,14 @@ static int unicode_escape(const char **p, unsigned *value)
     return 0;
 }
 
+/* Decode a quoted JSON string into owned UTF-8 and advance the input cursor.
+ * Reject malformed UTF-8, invalid escapes and embedded NUL so subsequent C-string
+ * comparisons cannot silently examine only part of a metadata field. */
 static char *string_value(const char **p)
 {
     if (*(*p)++ != '"') return NULL;
+    /* Find the unescaped closing quote before allocating: charging each tiny key
+     * for the entire remaining record would multiply memory use on large records. */
     const char *end = *p;
     while (*end && *end != '"') {
         if (*end == '\\' && end[1]) end++;
@@ -59,6 +67,8 @@ static char *string_value(const char **p)
         case 'u': {
             unsigned scalar;
             if (unicode_escape(p, &scalar) < 0 || !scalar) goto invalid;
+            /* A high surrogate requires an adjacent low surrogate. A lone surrogate
+             * is not a Unicode scalar and must never be encoded as UTF-8. */
             if (scalar >= 0xd800 && scalar <= 0xdbff) {
                 unsigned low;
                 if (strncmp(*p, "\\u", 2)) goto invalid;
@@ -87,6 +97,8 @@ invalid:
     return NULL;
 }
 
+/* Release decoded fields after either verification or parsing failure, then clear
+ * the structure so callers cannot accidentally retain dangling string pointers. */
 void free_record(VerifyRecord *record)
 {
     free(record->backup_hex); free(record->sha256); free(record->status); free(record->command);
@@ -95,12 +107,14 @@ void free_record(VerifyRecord *record)
 
 /* Accept the scalar-only version-1 schema, not arbitrary JSON documents.
  * Reject duplicate keys so two consumers cannot disagree about which path/hash
- * applies. Field order is irrelevant; unknown scalar fields remain extensible. */
+ * applies. Field order is irrelevant; unknown fields using supported scalar types
+ * are ignored. Nested values, negative numbers and floating-point values are rejected. */
 int parse_record(const char *line, VerifyRecord *record)
 {
     const char *p = line;
     char *keys[64] = {0};
     size_t count = 0;
+    /* Six bits track required field presence separately from nullable field values. */
     unsigned required = 0;
     int result = -1;
     memset(record, 0, sizeof(*record));
@@ -128,6 +142,7 @@ int parse_record(const char *line, VerifyRecord *record)
             const char *start = p;
             do {
                 unsigned digit = (unsigned)(*p++ - '0');
+                /* Test before multiply/add, so a malicious size cannot wrap around. */
                 if (number > (UINT64_MAX - digit) / 10) goto done;
                 number = number * 10 + digit;
             } while (*p >= '0' && *p <= '9');
@@ -143,6 +158,7 @@ int parse_record(const char *line, VerifyRecord *record)
         else if (!strcmp(key, "status")) { record->status = value; value = NULL; required |= 8; }
         else if (!strcmp(key, "sha256")) { record->sha256 = value; value = NULL; required |= 16; }
         else if (!strcmp(key, "backup_hex")) { record->backup_hex = value; value = NULL; required |= 32; }
+        /* Recognized string fields transfer ownership to record by nulling value. */
         free(value);
         if (!valid) goto done;
         whitespace(&p);
@@ -157,6 +173,7 @@ int parse_record(const char *line, VerifyRecord *record)
     for (size_t i = 0; i < sizeof(statuses) / sizeof(*statuses); i++)
         if (!strcmp(record->status, statuses[i])) known = true;
     if (!known) goto done;
+    /* Successful entries must carry integrity data; skipped/failed ones may not. */
     if (!strcmp(record->status, "ok") || !strcmp(record->status, "reused")) {
         if (!record->sha256 || strlen(record->sha256) != 64 ||
             strspn(record->sha256, "0123456789abcdef") != 64) goto done;

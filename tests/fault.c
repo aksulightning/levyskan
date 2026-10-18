@@ -16,12 +16,15 @@ static int target = -1;
 static int part_fd = -1, metadata_fd = -1;
 static unsigned reads, writes;
 
+/* Each subprocess selects one reproducible failure; no production code reads this. */
 static bool fault(const char *name)
 {
     const char *selected = getenv("VINYLSCAN_TEST_FAULT");
     return selected && !strcmp(selected, name);
 }
 
+/* Let O_PATH inventory succeed, then fail the fixture's content open when asked.
+ * Track reused fd numbers so failures do not leak into unrelated sibling files. */
 static int test_open(int parent, const char *path, int flags, mode_t mode)
 {
     bool is_target = !strcmp(path, "target") && !(flags & (O_PATH | O_DIRECTORY));
@@ -39,6 +42,8 @@ static int test_open(int parent, const char *path, int flags, mode_t mode)
     return fd;
 }
 
+/* Interpose libc's openat while preserving its optional mode argument. The helper
+ * invokes the syscall directly to avoid recursively entering this interposer. */
 int openat(int parent, const char *path, int flags, ...)
 {
     mode_t mode = 0;
@@ -50,6 +55,7 @@ int openat(int parent, const char *path, int flags, ...)
 }
 
 #if defined(__GLIBC__)
+/* glibc redirects large-file builds here; musl uses the ordinary openat symbol. */
 int openat64(int parent, const char *path, int flags, ...)
 {
     mode_t mode = 0;
@@ -61,6 +67,9 @@ int openat64(int parent, const char *path, int flags, ...)
 }
 #endif
 
+/* Inject signals, short reads or a failure after progress into the target fixture.
+ * The changed case deliberately edits only a disposable test file's timestamp;
+ * this shared library is never part of the Vinylscan executable. */
 ssize_t read(int fd, void *buffer, size_t size)
 {
     if (fd == target) {
@@ -82,6 +91,8 @@ ssize_t read(int fd, void *buffer, size_t size)
     return syscall(SYS_read, fd, buffer, size);
 }
 
+/* Limit faults to destination temporary/metadata fds. The metadata case writes
+ * a real prefix before failing, exercising detection of a truncated JSONL tail. */
 ssize_t write(int fd, const void *buffer, size_t size)
 {
     if (fd == part_fd) {
@@ -98,6 +109,7 @@ ssize_t write(int fd, const void *buffer, size_t size)
     return syscall(SYS_write, fd, buffer, size);
 }
 
+/* Simulate a delayed storage error after writes succeeded but before publication. */
 int fsync(int fd)
 {
     if (fault("fsync") && fd == part_fd) { errno = EIO; return -1; }

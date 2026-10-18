@@ -8,6 +8,8 @@
 #include <time.h>
 #include <unistd.h>
 
+/* Append an owned, initially pending record. Growth can move the array, so callers
+ * must not retain Entry pointers across later appends or recursive traversal. */
 static Entry *append_entry(Inventory *inventory, const char *relative, const char *source)
 {
     if (inventory->count == inventory->capacity) {
@@ -29,8 +31,12 @@ static Entry *append_entry(Inventory *inventory, const char *relative, const cha
     return entry;
 }
 
+/* Inventory a borrowed directory descriptor without reading file contents.
+ * Entry failures are recorded and siblings continue; -1 means this directory
+ * could not be fully enumerated. Recursive callers attach that failure to it. */
 static int walk(Run *run, Inventory *inventory, int fd, const char *relative, unsigned depth)
 {
+    /* fdopendir/closedir own their fd; duplicate it to preserve the caller's fd. */
     int copy = dup(fd);
     if (copy < 0) return -1;
     DIR *directory = fdopendir(copy);
@@ -38,6 +44,7 @@ static int walk(Run *run, Inventory *inventory, int fd, const char *relative, un
     int result = 0;
     for (;;) {
         if (interrupted) { errno = EINTR; result = -1; break; }
+        /* readdir uses NULL for both EOF and errors; only a fresh errno separates them. */
         errno = 0;
         struct dirent *item = readdir(directory);
         if (!item) { if (errno) result = -1; break; }
@@ -55,6 +62,7 @@ static int walk(Run *run, Inventory *inventory, int fd, const char *relative, un
             entry_error(entry, strerror(errno)); close(object); continue;
         }
         close(object);
+        /* Check mount identity before descending, including same-device bind mounts. */
         if (mount != run->source_mount) { entry->status = "skipped_mount"; continue; }
         if (S_ISLNK(entry->stat.st_mode)) { entry->status = "skipped_symlink"; continue; }
         if (S_ISDIR(entry->stat.st_mode)) {
@@ -65,6 +73,7 @@ static int walk(Run *run, Inventory *inventory, int fd, const char *relative, un
             if (check_source(run, child) < 0 || fstat(child, &current) < 0) {
                 entry_error(entry, strerror(errno)); close(child); continue;
             }
+            /* The name may have changed between inspection and opening the directory. */
             if (current.st_ino != entry->stat.st_ino || current.st_dev != entry->stat.st_dev) {
                 entry_error(entry, "directory replaced during scan"); close(child); continue;
             }
@@ -88,12 +97,15 @@ static int walk(Run *run, Inventory *inventory, int fd, const char *relative, un
     return result;
 }
 
+/* Use raw-byte order so processing is independent of locale and readdir order. */
 static int compare_entries(const void *a, const void *b)
 {
     const Entry *left = a, *right = b;
     return strcmp(left->relative, right->relative);
 }
 
+/* Produce a stable processing order after enumeration. Even a failed scan leaves
+ * its collected entries owned by inventory, which the caller must release. */
 int scan_tree(Run *run, Inventory *inventory)
 {
     int result = walk(run, inventory, run->source_fd, "", 0);
@@ -105,6 +117,7 @@ int scan_tree(Run *run, Inventory *inventory)
  * other files to a different date. No eligible files means an empty date. */
 int select_backup_date(const Inventory *inventory, char date[32])
 {
+    /* A separate flag lets pre-1970 mtimes compete correctly with the initial zero. */
     bool found = false;
     struct timespec latest = {0};
     for (size_t i = 0; i < inventory->count; i++) {
@@ -125,6 +138,8 @@ int select_backup_date(const Inventory *inventory, char date[32])
     return 0;
 }
 
+/* Release owned paths/errors and the array; literal status/type names are borrowed.
+ * The caller must discard or reinitialize the Inventory after this call. */
 void free_inventory(Inventory *inventory)
 {
     for (size_t i = 0; i < inventory->count; i++) {

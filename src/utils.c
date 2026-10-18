@@ -12,11 +12,15 @@
 volatile sig_atomic_t interrupted;
 static int emergency_log = -1;
 
+/* Borrow the already-open destination log for allocation-failure reporting.
+ * The caller retains ownership and keeps it open until normal cleanup. */
 void set_emergency_log(int fd)
 {
     emergency_log = fd;
 }
 
+/* Return owned memory or terminate with an incomplete-run exit code. Treat a
+ * zero-byte request as one byte so malloc(0) cannot look like an allocation error. */
 void *allocate(size_t size)
 {
     void *memory = malloc(size ? size : 1);
@@ -34,6 +38,7 @@ void *allocate(size_t size)
     return memory;
 }
 
+/* Give entries their own string storage, independent of readdir's reused buffer. */
 char *copy_string(const char *s)
 {
     char *copy = allocate(strlen(s) + 1);
@@ -41,6 +46,8 @@ char *copy_string(const char *s)
     return copy;
 }
 
+/* Measure before allocating instead of assuming PATH_MAX. Return owned text,
+ * or NULL for formatting errors; va_copy keeps the sizing pass independent. */
 char *format_string(const char *format, ...)
 {
     if (!format) { errno = EINVAL; return NULL; }
@@ -56,6 +63,8 @@ char *format_string(const char *format, ...)
     return result;
 }
 
+/* Retry only interrupted reads, never media errors. A shutdown signal cancels
+ * the retry so the caller can discard its incomplete destination output. */
 ssize_t read_retry(int fd, void *buffer, size_t size)
 {
     ssize_t count;
@@ -66,6 +75,8 @@ ssize_t read_retry(int fd, void *buffer, size_t size)
     return count;
 }
 
+/* Consume short writes until the complete buffer is written. Return -1/errno
+ * on failure; callers must assume a prefix may already exist on disk. */
 int write_all(int fd, const void *buffer, size_t size)
 {
     const unsigned char *p = buffer;
@@ -139,6 +150,8 @@ int open_parent(int root, const char *path, bool create, uint64_t mount, char **
     return fd;
 }
 
+/* Open a canonical absolute directory one component at a time. Cross mounts
+ * only during root selection; later traversal stays on that root's mount ID. */
 int open_root(const char *path)
 {
     if (path[0] != '/') { errno = EINVAL; return -1; }
@@ -164,6 +177,8 @@ bool same_stat(const struct stat *a, const struct stat *b)
         a->st_ctim.tv_sec == b->st_ctim.tv_sec && a->st_ctim.tv_nsec == b->st_ctim.tv_nsec;
 }
 
+/* Create a private, collision-resistant destination directory and exclusive log.
+ * Any opened descriptors are stored in Run for cleanup even if setup fails. */
 int create_run(Run *run, const char *prefix)
 {
     int parent = open_directory(run->dest_fd, ".vinylscan", true, run->dest_mount);
@@ -184,6 +199,8 @@ int create_run(Run *run, const char *prefix)
     return run->log_fd < 0 ? -1 : fsync(run->run_fd);
 }
 
+/* Send the same escaped diagnostic to stderr and the destination log. Losing
+ * diagnostics is itself fatal, so callers cannot report an unlogged clean run. */
 void log_error(Run *run, const char *path, const char *message)
 {
     /* JSON quoting also prevents terminal/control-character injection. */
@@ -201,6 +218,7 @@ void log_error(Run *run, const char *path, const char *message)
     free(line);
 }
 
+/* Own a copy of the diagnostic; strerror or a temporary caller buffer may change. */
 void entry_error(Entry *entry, const char *message)
 {
     entry->status = "error";

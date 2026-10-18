@@ -5,6 +5,8 @@
 #include <string.h>
 #include <zlib.h>
 
+/* Finalize the borrowed EVP context and encode exactly 32 SHA-256 bytes as text.
+ * The caller keeps ownership of the context and supplies a 65-byte result buffer. */
 static int digest_finish(EVP_MD_CTX *context, char hash[65])
 {
     unsigned char digest[EVP_MAX_MD_SIZE];
@@ -26,7 +28,9 @@ int stream_file(int source, int output, Entry *entry, uint64_t *bytes)
     *bytes = 0;
     entry->preview.sample = sample;
     if (!digest || EVP_DigestInit_ex(digest, EVP_sha256(), NULL) != 1) { errno = ENOMEM; goto done; }
+    /* A negative output selects scan-only mode; hashing and previews still run. */
     if (output >= 0) {
+        /* zlib's 15-bit window plus 16 selects gzip framing rather than raw/zlib data. */
         if (deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY) != Z_OK) {
             errno = ENOMEM; goto done;
         }
@@ -44,6 +48,8 @@ int stream_file(int source, int output, Entry *entry, uint64_t *bytes)
             stream.next_in = input;
             stream.avail_in = (uInt)count;
             int status;
+            /* One source block may need several output buffers. At EOF, keep
+             * finishing until zlib emits the gzip trailer and Z_STREAM_END. */
             do {
                 stream.next_out = compressed;
                 stream.avail_out = sizeof(compressed);
@@ -59,6 +65,7 @@ int stream_file(int source, int output, Entry *entry, uint64_t *bytes)
     preview_finish(&entry->preview);
     result = 0;
 done:
+    /* The preview's sample points into this stack frame; only its rendered text survives. */
     entry->preview.sample = NULL;
     if (initialized) deflateEnd(&stream);
     EVP_MD_CTX_free(digest);
@@ -83,6 +90,8 @@ int hash_gzip(int fd, char hash[65], uint64_t *size, uint64_t maximum)
         if (!stream.avail_in && !eof) {
             ssize_t count = read_retry(fd, input, sizeof(input));
             if (count < 0) goto done;
+            /* After physical EOF, allow inflate to drain already-buffered output.
+             * EOF alone is not success: only a validated gzip stream end is. */
             if (!count) eof = true;
             stream.next_in = input;
             stream.avail_in = (uInt)count;
@@ -94,6 +103,7 @@ int hash_gzip(int fd, char hash[65], uint64_t *size, uint64_t maximum)
         if (UINT64_MAX - *size < produced) { errno = EOVERFLOW; goto done; }
         *size += produced;
         if (*size > maximum) { errno = EBADMSG; goto done; }
+        /* Hash decompressed bytes so the result matches the original source hash. */
         if (EVP_DigestUpdate(digest, output, produced) != 1) { errno = EIO; goto done; }
         if (status == Z_STREAM_END) {
             /* Reject transparent plaintext, extra members and trailing garbage. */

@@ -18,6 +18,9 @@ int mount_id(int fd, uint64_t *id)
     return 0;
 }
 
+/* Publish between borrowed directory descriptors with an atomic no-overwrite
+ * operation. Return the kernel error if unsupported; a plain rename fallback could
+ * destroy a successful backup created between an existence check and the rename. */
 int rename_no_replace(int from, const char *old_name, int to, const char *new_name)
 {
     /* RENAME_NOREPLACE = 1; musl does not expose every Linux syscall wrapper. */

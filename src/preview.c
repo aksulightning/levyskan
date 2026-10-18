@@ -2,6 +2,8 @@
 #include "vinylscan.h"
 #include <string.h>
 
+/* Return the first complete UTF-8 scalar's byte width, or zero if invalid/incomplete.
+ * Validate bytes without locale-dependent character classification or decoding files. */
 size_t utf8_character(const unsigned char *s, size_t length)
 {
     if (!length) return 0;
@@ -11,11 +13,14 @@ size_t utf8_character(const unsigned char *s, size_t length)
                a >= 0xe0 && a <= 0xef ? 3 : a >= 0xf0 && a <= 0xf4 ? 4 : 0;
     if (!n || length < n) return 0;
     for (size_t i = 1; i < n; i++) if ((s[i] & 0xc0) != 0x80) return 0;
+    /* Exclude overlong forms, UTF-16 surrogate values and values beyond U+10FFFF. */
     if ((a == 0xe0 && s[1] < 0xa0) || (a == 0xed && s[1] >= 0xa0) ||
         (a == 0xf0 && s[1] < 0x90) || (a == 0xf4 && s[1] >= 0x90)) return 0;
     return n;
 }
 
+/* Retain only the first sample window in the caller-provided buffer. Later data
+ * still reaches the checksum/compressor but adds no preview memory or source reads. */
 void preview_add(Preview *preview, const unsigned char *data, size_t length)
 {
     size_t remaining = PREVIEW_SAMPLE - preview->length;
@@ -24,6 +29,8 @@ void preview_add(Preview *preview, const unsigned char *data, size_t length)
     preview->length += length;
 }
 
+/* Distinguish a valid prefix cut by the sampling boundary from already-invalid
+ * UTF-8. Only a boundary cut may be ignored when classifying the sample as text. */
 static bool incomplete_utf8(const unsigned char *s, size_t length)
 {
     unsigned char c = s[0];
@@ -36,6 +43,9 @@ static bool incomplete_utf8(const unsigned char *s, size_t length)
     return true;
 }
 
+/* Classify the sample, then store either its first line or its first 16 hex bytes.
+ * Classification examines the whole sample, so a later NUL can make an apparently
+ * textual first line binary. Empty input is text; no filename extension is consulted. */
 void preview_finish(Preview *preview)
 {
     bool text = true;
@@ -45,6 +55,7 @@ void preview_finish(Preview *preview)
         /* A sample boundary may split a valid multibyte character. */
         if (!width && preview->length == PREVIEW_SAMPLE &&
             incomplete_utf8(preview->sample + i, preview->length - i)) break;
+        /* Permit common text whitespace but reject NUL, DEL and C1 controls. */
         if (!width || (c < 32 && c != '\n' && c != '\r' && c != '\t') || c == 127 ||
             (c == 0xc2 && preview->sample[i + 1] >= 0x80 && preview->sample[i + 1] <= 0x9f)) {
             text = false; break;
@@ -63,6 +74,7 @@ void preview_finish(Preview *preview)
     size_t length = 0;
     while (length < preview->length && preview->sample[length] != '\n' && preview->sample[length] != '\r') {
         size_t width = utf8_character(preview->sample + length, preview->length - length);
+        /* Count complete code points against a byte budget, never split UTF-8. */
         if (!width || length + width > 256) { preview->truncated = true; break; }
         length += width;
     }

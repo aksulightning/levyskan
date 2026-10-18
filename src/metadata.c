@@ -23,6 +23,8 @@ void json_string(FILE *file, const char *value)
     fputc('"', file);
 }
 
+/* Encode pathname bytes, excluding the terminating NUL, into caller-owned ASCII.
+ * Check allocation arithmetic before doubling the length for two digits per byte. */
 char *hex_encode(const char *value)
 {
     size_t size = strlen(value);
@@ -33,6 +35,7 @@ char *hex_encode(const char *value)
     return hex;
 }
 
+/* Decode a hex digit without locale rules; -1 distinguishes invalid input from zero. */
 static int nibble(char value)
 {
     if (value >= '0' && value <= '9') return value - '0';
@@ -41,6 +44,8 @@ static int nibble(char value)
     return -1;
 }
 
+/* Return owned pathname bytes or NULL for malformed hex. Embedded NUL is rejected
+ * because filesystem APIs would otherwise use only a prefix of the supplied path. */
 char *hex_decode(const char *value)
 {
     size_t length = strlen(value);
@@ -55,6 +60,7 @@ char *hex_decode(const char *value)
     return raw;
 }
 
+/* Keys are fixed program literals; nullable values always pass through JSON escaping. */
 static void string_field(FILE *file, const char *key, const char *value)
 {
     fprintf(file, ",\"%s\":", key);
@@ -83,6 +89,7 @@ int metadata_write(Run *run, const Entry *entry)
             (unsigned)(entry->stat.st_mode & 07777));
     string_field(file, "mtime", timestamp);
     fprintf(file, ",\"mtime_ns\":%ld", entry->stat.st_mtim.tv_nsec);
+    /* Null distinguishes unavailable results from valid empty-file hash/preview data. */
     string_field(file, "sha256", entry->sha256[0] ? entry->sha256 : NULL);
     string_field(file, "preview_type", entry->preview.type);
     string_field(file, "preview", entry->preview.type ? entry->preview.text : NULL);
@@ -93,6 +100,7 @@ int metadata_write(Run *run, const Entry *entry)
     string_field(file, "error", entry->error);
     fputs("}\n", file);
     bool failed = ferror(file);
+    /* Closing open_memstream finalizes its buffer and length before the fd write. */
     if (fclose(file) != 0) failed = true;
     int result = -1;
     if (!failed && length <= RECORD_LIMIT) result = write_all(run->metadata_fd, line, length);

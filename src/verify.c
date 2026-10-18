@@ -58,6 +58,9 @@ static int read_record(FILE *file, char **buffer, size_t *capacity)
     }
 }
 
+/* Verify the usable records of one run, accumulating failures rather than hiding
+ * later independent results. Only fall back to partial metadata when the final
+ * file is absent; a present but unsafe/unreadable final file remains an error. */
 static void verify_metadata(Run *run, int directory, const char *run_name)
 {
     bool partial = false;
@@ -86,6 +89,8 @@ static void verify_metadata(Run *run, int directory, const char *run_name)
         line_number++;
         char *location = format_string("%s:%zu", run_name, line_number);
         VerifyRecord record;
+        /* A malformed complete line has a known next boundary; a failed line
+         * read does not. Continue only when the next record can be located safely. */
         if (read_status < 0 || parse_record(line, &record) < 0) {
             run->errors++; log_error(run, location, "invalid, truncated or unreadable metadata record");
             free(location);
@@ -111,6 +116,8 @@ static void verify_metadata(Run *run, int directory, const char *run_name)
     if (fclose(file) != 0) { run->errors++; log_error(run, run_name, "metadata close failed"); }
 }
 
+/* Walk destination run directories only. Count missing metadata and file failures
+ * in Run, return -1 for traversal/setup failure, and ignore separate verify logs. */
 int verify_backups(Run *run)
 {
     int parent = open_directory(run->dest_fd, ".vinylscan", false, run->dest_mount);
@@ -123,6 +130,7 @@ int verify_backups(Run *run)
         errno = 0;
         struct dirent *entry = readdir(directory);
         if (!entry) { if (errno) result = -1; break; }
+        /* The current verification also creates a directory, with a verify- prefix. */
         if (strncmp(entry->d_name, "run-", 4)) continue;
         runs++;
         int fd = open_directory(parent, entry->d_name, false, run->dest_mount);
