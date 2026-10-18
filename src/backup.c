@@ -1,5 +1,5 @@
 /* One source read, checked snapshots, and atomic no-replace publication. */
-#include "vinylscan.h"
+#include "levyskan.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
