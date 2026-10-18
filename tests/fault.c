@@ -19,7 +19,7 @@ static unsigned reads, writes;
 /* Each subprocess selects one reproducible failure; no production code reads this. */
 static bool fault(const char *name)
 {
-    const char *selected = getenv("VINYLSCAN_TEST_FAULT");
+    const char *selected = getenv("LEVYSKAN_TEST_FAULT");
     return selected && !strcmp(selected, name);
 }
 
@@ -69,7 +69,7 @@ int openat64(int parent, const char *path, int flags, ...)
 
 /* Inject signals, short reads or a failure after progress into the target fixture.
  * The changed case deliberately edits only a disposable test file's timestamp;
- * this shared library is never part of the Vinylscan executable. */
+ * this shared library is never part of the Levyskan executable. */
 ssize_t read(int fd, void *buffer, size_t size)
 {
     if (fd == target) {
