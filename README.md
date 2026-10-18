@@ -1,4 +1,4 @@
-# Vinylscan 0.1
+# Levyskan 0.1
 
 A conservative C11 command-line scanner and backup utility for Linux, targeting
 Alpine/musl. Every regular file gets its own standard gzip file. Metadata is
@@ -31,7 +31,7 @@ binary and empty files; preview boundaries; unusual filename bytes; nesting;
 16 MiB streaming; gzip and SHA-256 compatibility; missing/unreadable files;
 symlinks/FIFOs; date selection; existing versions; corruption; interruptions;
 changed files; short I/O; disk-full, sync and metadata failures. Deterministic
-fault injection is a separate shared library, never linked into Vinylscan.
+fault injection is a separate shared library, never linked into Levyskan.
 Tests require a writable temporary filesystem (`TMPDIR` can select one).
 `make docs` checks for required source and function comments; `make test` and CI
 run the same check. Comment accuracy still requires human review.
@@ -40,7 +40,7 @@ run the same check. Comment accuracy still requires human review.
 ## Usage
 
 Prepare an existing, writable destination on a different filesystem. Arrange a
-read-only source mount yourself; Vinylscan never mounts, remounts or repairs it.
+read-only source mount yourself; Levyskan never mounts, remounts or repairs it.
 
 ```sh
 ./vinylscan scan --source /mnt/source --dest /mnt/backup
@@ -160,7 +160,7 @@ are skipped. Mount IDs prevent traversal into nested mounts, including bind moun
 on the same device. Root arguments are resolved once to canonical directories.
 Source and destination trees must not overlap in either direction.
 
-Vinylscan never writes, deletes, renames, chmods, chowns, repairs or creates
+Levyskan never writes, deletes, renames, chmods, chowns, repairs or creates
 temporary files on the source tree. Size, inode, mode, nanosecond mtime/ctime and
 the final directory entry are compared with the inventory to detect changes.
 This does **not** provide a snapshot of a live filesystem; metadata races, changes
@@ -171,12 +171,12 @@ mount or another machine from changing the underlying filesystem.
 The destination and its administrators must be trusted. Descriptor-relative,
 no-follow operations block symlink/path-traversal redirection; they cannot defend
 against a privileged attacker moving already-open directories or remounting them.
-An advisory lock serializes Vinylscan runs, not arbitrary external writers.
+An advisory lock serializes Levyskan runs, not arbitrary external writers.
 Checksums detect damage but do not authenticate editable metadata or identify
 deleted records. Always keep independent copies of valuable data.
 
 Reading a physically damaged disk can cause further hardware stress, even through
-a read-only mount. Vinylscan cannot guarantee recovery from damaged hardware.
+a read-only mount. Levyskan cannot guarantee recovery from damaged hardware.
 It has no repair operations and no automatic retry policy beyond interrupted I/O.
 
 Other limits: inventory memory grows with entry count and pathname lengths;
