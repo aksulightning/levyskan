@@ -172,7 +172,7 @@ for fault in unreadable missing io changed diskfull fsync interrupt metadata ein
     fault_dest="$work/fault-$fault"; mkdir "$fault_dest"
     expected=1
     case "$fault" in interrupt) expected=143;; metadata) expected=2;; eintr|shortwrite) expected=0;; esac
-    expect "$expected" env LD_PRELOAD="$PWD/tests/fault.so" VINYLSCAN_TEST_FAULT="$fault" "$bin" backup \
+    expect "$expected" env LD_PRELOAD="$PWD/tests/fault.so" LEVYSKAN_TEST_FAULT="$fault" "$bin" backup \
         --source "$fault_source" --dest "$fault_dest" --allow-writable-source --allow-same-filesystem
     case "$fault" in
     eintr|shortwrite) expect 0 "$bin" verify --dest "$fault_dest";;
