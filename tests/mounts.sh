@@ -24,7 +24,7 @@ mount -t tmpfs tmpfs "$work/source/nested"
 printf 'unrelated filesystem\n' > "$work/source/nested/skip"
 mount -o remount,ro "$work/source"
 "$bin" backup --source "$work/source" --dest "$work/dest"
-jq -es 'any(.status=="skipped_mount") and any(.filename=="file" and .status=="ok")' "$work/dest"/.vinylscan/run-*/metadata.jsonl
+jq -es 'any(.status=="skipped_mount") and any(.filename=="file" and .status=="ok")' "$work/dest"/.levyskan/run-*/metadata.jsonl
 "$bin" verify --dest "$work/dest"
 echo 'PASS actual read-only mount and separate-filesystem traversal boundary'
 umount "$work/source/nested"
@@ -34,7 +34,7 @@ printf 'same-device bind\n' > "$work/source/data/file"
 mount --bind "$work/source/data" "$work/source/bind"
 mount -o remount,ro "$work/source"
 "$bin" scan --source "$work/source" --dest "$work/dest"
-jq -es 'any(.status=="skipped_mount" and .filename=="bind")' "$work/dest"/.vinylscan/run-*/metadata.jsonl
+jq -es 'any(.status=="skipped_mount" and .filename=="bind")' "$work/dest"/.levyskan/run-*/metadata.jsonl
 echo 'PASS same-device bind mount skipped'
 mount --bind "$work/source/data" "$work/alias"
 if "$bin" backup --source "$work/source" --dest "$work/alias" --allow-writable-source --allow-same-filesystem; then
