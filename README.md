@@ -84,9 +84,9 @@ destination can be established are stderr-only. Failure to write a log is fatal.
 /mnt/backup/
   2026-10-15/home/user/photos/image.png.gz
   2026-10-15/home/user/photos/image.png.v1.gz
-  .vinylscan/run-<random-id>/metadata.jsonl
-  .vinylscan/run-<random-id>/run.log
-  .vinylscan/verify-<random-id>/run.log
+  .levyskan/run-<random-id>/metadata.jsonl
+  .levyskan/run-<random-id>/run.log
+  .levyskan/verify-<random-id>/run.log
 ```
 
 One date directory is used for the entire run: the **UTC date of the latest
@@ -139,8 +139,8 @@ Binary previews contain up to 16 uppercase hexadecimal bytes. An empty file is
 empty text. Data beyond the sample can be binary: this is a heuristic, not MIME detection.
 
 ```sh
-cat /mnt/backup/.vinylscan/run-*/metadata.jsonl
-jq -c 'select(.status == "error")' /mnt/backup/.vinylscan/run-*/metadata.jsonl
+cat /mnt/backup/.levyskan/run-*/metadata.jsonl
+jq -c 'select(.status == "error")' /mnt/backup/.levyskan/run-*/metadata.jsonl
 ```
 
 Records are synced as they are written. A completed enumeration, including any
