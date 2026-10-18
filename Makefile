@@ -12,10 +12,13 @@ vinylscan: $(OBJECTS)
 
 $(OBJECTS): src/vinylscan.h
 
-test: vinylscan
+docs:
+	sh tests/docs.sh
+
+test: docs vinylscan
 	sh tests/test.sh
 
 clean:
 	rm -f vinylscan $(OBJECTS) tests/fault.so tests/unit
 
-.PHONY: all test clean
+.PHONY: all docs test clean
