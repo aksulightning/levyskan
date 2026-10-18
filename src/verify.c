@@ -1,5 +1,5 @@
 /* Verify only destination data, including complete records in interrupted runs. */
-#include "vinylscan.h"
+#include "levyskan.h"
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
