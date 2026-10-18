@@ -1,5 +1,5 @@
 /* Streaming gzip and OpenSSL SHA-256; strict single-member gzip verification. */
-#include "vinylscan.h"
+#include "levyskan.h"
 #include <errno.h>
 #include <openssl/evp.h>
 #include <string.h>
