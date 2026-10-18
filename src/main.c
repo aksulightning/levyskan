@@ -173,7 +173,7 @@ int main(int argc, char **argv)
     if (result < 0) { log_error(&run, "run incomplete", interrupted ? "interrupted" : strerror(errno)); goto done; }
     exit_code = run.errors ? 1 : 0;
     printf("%s: %zu\nSkipped: %zu\nErrors: %zu\n", verify ? "Verified records" : "Files processed", run.processed, run.skipped, run.errors);
-    printf("Run: .vinylscan/%s/\n", run.run_name);
+    printf("Run: .levyskan/%s/\n", run.run_name);
 done:
     /* A late flush/close error can invalidate apparent success. SIGINT/SIGTERM
      * take precedence afterward so shells can identify an interrupted command. */
