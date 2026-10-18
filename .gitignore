@@ -1,4 +1,4 @@
-/vinylscan
+/levyskan
 *.o
 /tests/fault.so
 /tests/unit
