@@ -9,6 +9,7 @@ mount --make-rprivate /
 cd "$(dirname "$0")/.."
 bin="$PWD/vinylscan"
 work=$(mktemp -d)
+# Unmount disposable fixtures before removing their temporary directory.
 cleanup() {
     umount -R "$work" 2>/dev/null || true
     rm -rf "$work"
