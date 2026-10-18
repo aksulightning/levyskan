@@ -181,7 +181,7 @@ bool same_stat(const struct stat *a, const struct stat *b)
  * Any opened descriptors are stored in Run for cleanup even if setup fails. */
 int create_run(Run *run, const char *prefix)
 {
-    int parent = open_directory(run->dest_fd, ".vinylscan", true, run->dest_mount);
+    int parent = open_directory(run->dest_fd, ".levyskan", true, run->dest_mount);
     if (parent < 0) return -1;
     unsigned char random[16];
     ssize_t count;
