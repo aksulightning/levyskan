@@ -1,5 +1,5 @@
 /* Predictable UTF-8 validation and previews from the first 4096 bytes. */
-#include "vinylscan.h"
+#include "levyskan.h"
 #include <string.h>
 
 /* Return the first complete UTF-8 scalar's byte width, or zero if invalid/incomplete.

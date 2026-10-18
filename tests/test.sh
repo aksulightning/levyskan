@@ -26,9 +26,9 @@ backup() { "$bin" backup --source "$1" --dest "$2" --allow-writable-source --all
 # Scan disposable fixtures with both development-only safety overrides.
 scan() { "$bin" scan --source "$1" --dest "$2" --allow-writable-source --allow-same-filesystem; }
 # List completed metadata files beneath the supplied destination.
-metadata() { find "$1/.vinylscan" -name metadata.jsonl -type f; }
+metadata() { find "$1/.levyskan" -name metadata.jsonl -type f; }
 # Check a jq predicate against completed JSONL records in a destination.
-json() { find "$1/.vinylscan" -name metadata.jsonl -type f -exec cat {} + | jq -es "$2" >/dev/null; }
+json() { find "$1/.levyskan" -name metadata.jsonl -type f -exec cat {} + | jq -es "$2" >/dev/null; }
 
 ${CC:-cc} -std=c11 -Wall -Wextra -Wpedantic -fPIC -shared tests/fault.c -o tests/fault.so
 ${CC:-cc} -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -std=c11 -Wall -Wextra -Wpedantic -Isrc tests/unit.c src/utils.c src/linux.c src/preview.c src/metadata.c src/json.c -o tests/unit
@@ -56,7 +56,7 @@ find "$source" -type f -exec touch -t 202001020304.05 {} +
 touch -t 202110030405.06 "$source/UTF-8.txt"
 before=$(find "$source" -type f -exec stat -c '%n %s %Y %a %u %g' {} +)
 expect 2 "$bin" backup --source "$source" --dest "$dest"
-[ ! -e "$dest/.vinylscan" ]
+[ ! -e "$dest/.levyskan" ]
 pass 'strict default rejects writable source without creating metadata'
 expect 2 "$bin" backup --source "$source" --dest "$dest" --allow-writable-source
 pass 'separate filesystem default'
@@ -172,7 +172,7 @@ for fault in unreadable missing io changed diskfull fsync interrupt metadata ein
     fault_dest="$work/fault-$fault"; mkdir "$fault_dest"
     expected=1
     case "$fault" in interrupt) expected=143;; metadata) expected=2;; eintr|shortwrite) expected=0;; esac
-    expect "$expected" env LD_PRELOAD="$PWD/tests/fault.so" VINYLSCAN_TEST_FAULT="$fault" "$bin" backup \
+    expect "$expected" env LD_PRELOAD="$PWD/tests/fault.so" LEVYSKAN_TEST_FAULT="$fault" "$bin" backup \
         --source "$fault_source" --dest "$fault_dest" --allow-writable-source --allow-same-filesystem
     case "$fault" in
     eintr|shortwrite) expect 0 "$bin" verify --dest "$fault_dest";;

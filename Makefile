@@ -6,19 +6,19 @@ LDLIBS += -lz -lcrypto
 SOURCES = src/main.c src/utils.c src/linux.c src/scanner.c src/preview.c src/stream.c src/metadata.c src/json.c src/backup.c src/verify.c
 OBJECTS = $(SOURCES:.c=.o)
 
-all: vinylscan
-vinylscan: $(OBJECTS)
+all: levyskan
+levyskan: $(OBJECTS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(LDLIBS)
 
-$(OBJECTS): src/vinylscan.h
+$(OBJECTS): src/levyskan.h
 
 docs:
 	sh tests/docs.sh
 
-test: docs vinylscan
+test: docs levyskan
 	sh tests/test.sh
 
 clean:
-	rm -f vinylscan $(OBJECTS) tests/fault.so tests/unit
+	rm -f levyskan $(OBJECTS) tests/fault.so tests/unit
 
 .PHONY: all docs test clean

@@ -1,5 +1,5 @@
 /* Verify only destination data, including complete records in interrupted runs. */
-#include "vinylscan.h"
+#include "levyskan.h"
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -120,7 +120,7 @@ static void verify_metadata(Run *run, int directory, const char *run_name)
  * in Run, return -1 for traversal/setup failure, and ignore separate verify logs. */
 int verify_backups(Run *run)
 {
-    int parent = open_directory(run->dest_fd, ".vinylscan", false, run->dest_mount);
+    int parent = open_directory(run->dest_fd, ".levyskan", false, run->dest_mount);
     if (parent < 0) return -1;
     DIR *directory = fdopendir(parent);
     if (!directory) { close(parent); return -1; }

@@ -1,6 +1,6 @@
 /* Shared contracts and owned run state; API rationale is indexed in RESEARCH.md. */
-#ifndef VINYLSCAN_H
-#define VINYLSCAN_H
+#ifndef LEVYSKAN_H
+#define LEVYSKAN_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -14,7 +14,7 @@
 #define MAX_DEPTH 256
 #define RECORD_LIMIT (16U * 1024U * 1024U)
 
-_Static_assert(sizeof(off_t) >= 8, "Vinylscan requires 64-bit file offsets");
+_Static_assert(sizeof(off_t) >= 8, "Levyskan requires 64-bit file offsets");
 
 /* Holds borrowed sample bytes and the resulting text or hex preview. */
 typedef struct {

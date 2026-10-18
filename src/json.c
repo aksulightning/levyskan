@@ -1,5 +1,5 @@
-/* Strict flat-schema JSON reader for Vinylscan records; no external database. */
-#include "vinylscan.h"
+/* Strict flat-schema JSON reader for Levyskan records; no external database. */
+#include "levyskan.h"
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>

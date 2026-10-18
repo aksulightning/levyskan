@@ -1,5 +1,5 @@
 /* Descriptor-based path handling and shared I/O. No source writes. */
-#include "vinylscan.h"
+#include "levyskan.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -26,7 +26,7 @@ void *allocate(size_t size)
     void *memory = malloc(size ? size : 1);
     if (!memory) {
         /* Fail closed: the unfinished run and temporary gzip remain uncommitted. */
-        const char message[] = "vinylscan: out of memory; run incomplete\n";
+        const char message[] = "levyskan: out of memory; run incomplete\n";
         int reported = write_all(STDERR_FILENO, message, sizeof(message) - 1);
         if (emergency_log >= 0) {
             reported = write_all(emergency_log, message, sizeof(message) - 1);
@@ -181,7 +181,7 @@ bool same_stat(const struct stat *a, const struct stat *b)
  * Any opened descriptors are stored in Run for cleanup even if setup fails. */
 int create_run(Run *run, const char *prefix)
 {
-    int parent = open_directory(run->dest_fd, ".vinylscan", true, run->dest_mount);
+    int parent = open_directory(run->dest_fd, ".levyskan", true, run->dest_mount);
     if (parent < 0) return -1;
     unsigned char random[16];
     ssize_t count;
@@ -208,7 +208,7 @@ void log_error(Run *run, const char *path, const char *message)
     size_t size = 0;
     FILE *memory = open_memstream(&line, &size);
     if (!memory) { run->fatal = true; return; }
-    fputs("vinylscan: ", memory); json_string(memory, path);
+    fputs("levyskan: ", memory); json_string(memory, path);
     fputs(": ", memory); json_string(memory, message); fputc('\n', memory);
     if (fclose(memory) != 0) run->fatal = true;
     if (line) {

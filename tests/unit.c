@@ -1,5 +1,5 @@
 /* Boundary tests for preview handling and the metadata parser. */
-#include "vinylscan.h"
+#include "levyskan.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>

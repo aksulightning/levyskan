@@ -1,5 +1,5 @@
 /* JSONL writer: readable strings plus lossless hexadecimal pathname bytes. */
-#include "vinylscan.h"
+#include "levyskan.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
