@@ -1,5 +1,5 @@
 /* CLI and run lifecycle. All source checks precede destination writes. */
-#include "vinylscan.h"
+#include "levyskan.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
@@ -12,10 +12,10 @@
  * (stderr), including the safety defaults and observable exit-code contract. */
 static void usage(FILE *file)
 {
-    fputs("Vinylscan 0.1\n"
-          "Usage: vinylscan scan|backup --source DIR --dest EXISTING_DIR [options]\n"
-          "       vinylscan verify --dest EXISTING_DIR\n"
-          "       vinylscan --help\n\n"
+    fputs("Levyskan 0.1\n"
+          "Usage: levyskan scan|backup --source DIR --dest EXISTING_DIR [options]\n"
+          "       levyskan verify --dest EXISTING_DIR\n"
+          "       levyskan --help\n\n"
           "Default: read-only mounted source; separate destination filesystem.\n"
           "  --allow-writable-source  Permit possible source access-time updates\n"
           "  --allow-same-filesystem  Permit same filesystem (testing only; requires above)\n"
@@ -167,7 +167,7 @@ int main(int argc, char **argv)
     set_emergency_log(run.log_fd);
     if (run.writable) log_error(&run, "WARNING", "writable source permitted: filesystem metadata changes, including access times, cannot be completely prevented");
     if (run.same_filesystem) log_error(&run, "WARNING", "same-filesystem test override: destination writes affect the source filesystem; use separate media for real backups");
-    puts("Vinylscan 0.1");
+    puts("Levyskan 0.1");
     if (!verify) printf("Safety mode: %s\n", run.writable ? "writable source explicitly allowed" : "strict read-only");
     int result = verify ? verify_backups(&run) : execute_scan(&run);
     if (result < 0) { log_error(&run, "run incomplete", interrupted ? "interrupted" : strerror(errno)); goto done; }
@@ -179,7 +179,7 @@ done:
      * take precedence afterward so shells can identify an interrupted command. */
     if (run.metadata_fd >= 0 && close(run.metadata_fd) < 0) exit_code = 2;
     if (run.log_fd >= 0) {
-        if (fsync(run.log_fd) < 0) { perror("vinylscan: log fsync"); exit_code = 2; }
+        if (fsync(run.log_fd) < 0) { perror("levyskan: log fsync"); exit_code = 2; }
         if (close(run.log_fd) < 0) exit_code = 2;
     }
     if (run.run_fd >= 0 && close(run.run_fd) < 0) exit_code = 2;
