@@ -7,7 +7,7 @@ if [ "${LEVYSKAN_MOUNT_TESTS:-}" != 1 ]; then
 fi
 mount --make-rprivate /
 cd "$(dirname "$0")/.."
-bin="$PWD/vinylscan"
+bin="$PWD/levyskan"
 work=$(mktemp -d)
 # Unmount disposable fixtures before removing their temporary directory.
 cleanup() {
