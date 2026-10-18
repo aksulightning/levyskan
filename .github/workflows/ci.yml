@@ -1,0 +1,24 @@
+name: C prototype
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  alpine:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test Alpine musl
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src alpine:3.22 sh -ec '
+            apk add --no-cache build-base linux-headers zlib-dev openssl-dev jq gzip
+            make clean
+            make CFLAGS="-O2 -g -std=c11 -Wall -Wextra -Wpedantic -Werror"
+            make test
+          '
+      - name: Isolated read-only and bind-mount tests
+        run: |
+          docker run --rm --cap-add SYS_ADMIN --security-opt apparmor=unconfined \
+            -v "$PWD:/src" -w /src alpine:3.22 sh -ec '
+              apk add --no-cache zlib libcrypto3 jq util-linux
+              VINYLSCAN_MOUNT_TESTS=1 unshare --mount sh tests/mounts.sh
+            '

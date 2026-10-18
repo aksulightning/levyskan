@@ -1,0 +1,4 @@
+/vinylscan
+*.o
+/tests/fault.so
+/tests/unit
